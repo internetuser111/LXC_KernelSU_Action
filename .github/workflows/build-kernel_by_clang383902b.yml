@@ -58,10 +58,23 @@ jobs:
         echo "DISABLE_FST=$(cat $CONFIG_ENV | grep -w "DISABLE_FST" | head -n 1 | cut -d "=" -f 2)" >> $GITHUB_ENV
         echo "ENABLE_NETHUNTER=$(cat $CONFIG_ENV | grep -w "ENABLE_NETHUNTER" | head -n 1 | cut -d "=" -f 2)" >> $GITHUB_ENV
         
-    - name: Set swap to 10G
-      uses: pierotofy/set-swap-space@master
+    
+    - name: Cleanup system space
+      uses: easimon/maximize-build-space@master
       with:
-        swap-size-gb: 10
+        root-reserve-mb: 512
+        swap-size-mb: 12288
+        remove-dotnet: "true"
+        remove-haskell: "true"
+        remove-codeql: "true"
+        remove-docker-images: "true"
+
+    - name: Additional cleanup to prevent running out of space
+      run: |
+        sudo rm -rf /usr/share/dotnet > /dev/null 2>&1
+        sudo rm -rf /opt/ghc > /dev/null 2>&1
+        sudo rm -rf /usr/local/share/boost > /dev/null 2>&1
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY" > /dev/null 2>&1
 
     - name: Setup build kernel environment
       run: |
@@ -72,13 +85,15 @@ jobs:
         mkdir -p $GITHUB_WORKSPACE/kernel_workspace
 
   
-
-    - name: Download clang-383902b
+    - name: Download clang-r522817
       run: |
+        git lfs install
         cd $GITHUB_WORKSPACE/kernel_workspace
         mkdir clang-aosp
-        git clone https://github.com/tomxi1997/Toolchain.git clang-aosp --depth=1
-          
+        git clone --branch fourteen --depth=1 https://gitlab.com/yaosp/prebuilts_clang_host_linux-x86 clang-aosp
+        # Set the path to include the specific clang version
+        echo "PATH=$GITHUB_WORKSPACE/kernel_workspace/clang-aosp/clang-r522817/bin:$PATH" >> $GITHUB_ENV
+
         
 
     - name: Download mkbootimg tools
